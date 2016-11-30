@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec4 vPosition;
+uniform float dispX, dispY;
+
+void
+main()
+{
+	gl_Position.x = vPosition.x + dispX;
+	gl_Position.y = vPosition.y + dispY;
+	gl_Position.z = 0.0;
+	gl_Position.w = 1.0;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+uniform vec4 color;
+void
+main()
+{
+    gl_FragColor = color;
+}
+</script>
+
+<script type="text/javascript" src="./Common/webgl-utils.js"></script>
+<script type="text/javascript" src="./Common/initShaders.js"></script>
+<script type="text/javascript" src="./Common/MV.js"></script>
+<script type="text/javascript" src="ping-pong.js"></script>
+</head>
+
+<body>
+<canvas id="gl-canvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+<<br><br>
+<div>
+    <button id="up">Ball Speed +</button>
+	<button id="down">Ball Speed -</button>
+    <button id="left">Paddle Left</button>
+	<button id="right">Paddle Right</button>
+</div>
+<label id ="saves">Bounces: 0</label>
+</body>
+</html>
