@@ -2,7 +2,7 @@
 
 var gl;
 var over = 0;
-var speed = 100;
+var speed = 50;
 var saves = 0;
 var label;
 
@@ -17,33 +17,35 @@ var colorLoc;
 var bufferId;
 
 var bricks = [];
-var numBricks = 10;
+var numBricks = 50;
+
 
 window.onload = function init()
 {
 	
-	var c;
-	for(c = 0; c < numBricks; c ++){
-		var a = {
-			'x': -.95, 'y':1.5, 'hits': 1
+	var c, r;
+	for(c = 0; c < numBricks/5; c ++){
+		for(r = 0; r < 5; r++){
+			var brick = {
+				'x': -.9, 'y':0, 'hits': 1
+			}
+			brick.x = brick.x + (.20)*c;
+			brick.y = 0 + (-.1)*r;
+			brick.hits = 1;
+			bricks[c + (r*10)] = brick;
 		}
-		a.x = a.x + (.35)*c;
-		console.log(a.x, c)
-		a.y = 1.5;
-		a.hits = 1;
-		bricks[c] = a;
 	}
 	
     var canvas = document.getElementById( "gl-canvas" );
 	label = document.getElementById("saves" );
-    console.log(label);
+ 
     gl = WebGLUtils.setupWebGL( canvas );
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
     
 	//variables used to generate vertecies
     var i, x, y;
-	var rad = 0.05;
+	var rad = 0.03;
 	var vertices = [];
 	vertices.push(vec2(0,0));
 	
@@ -60,6 +62,12 @@ window.onload = function init()
 	vertices.push(vec2(-.125, -.95));
 	vertices.push(vec2(.125, -.95));
     
+	//vertecies for brick
+	vertices.push(vec2(.1, 1));
+	vertices.push(vec2(-.1, 1));
+	vertices.push(vec2(-.1, .9));
+	vertices.push(vec2(.1, .9));
+	
     //  Configure WebGL
     gl.viewport( 0, 0, canvas.width, canvas.height );
     gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
@@ -72,7 +80,7 @@ window.onload = function init()
     bufferId = gl.createBuffer();
 	gl.bindBuffer( gl.ARRAY_BUFFER, bufferId );
     gl.bufferData( gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW );
-	
+
 
     // Associate out shader variables with our data buffer
     var vPosition = gl.getAttribLocation( program, "vPosition" );
@@ -180,7 +188,6 @@ function render() {
 		}
 		else if(ballY + yVel <= -.9){
 			if(ballX >= padDir -.125 && ballX <= padDir + .125){
-				console.log(saves);
 				ballY = -.9;
 				yVel = yVel*(-1);
 				saves += 1;
@@ -214,11 +221,11 @@ function render() {
 		//Brick
 		var i;
 		for(i = 0; i < numBricks; i ++){
-			//console.log(bricks[i]);
-			gl.uniform4fv( colorLoc, vec4(0.0, 0.0, 0.0, 1.0) );
+			//console.log(bricks[i].x - .1);
+			gl.uniform4fv( colorLoc, vec4(Math.random(), Math.random(), Math.random(), 1.0) );
 			gl.uniform1f(dispXLoc, bricks[i].x);
 			gl.uniform1f(dispYLoc, bricks[i].y);
-			gl.drawArrays( gl.TRIANGLE_FAN, numVertices + 1, numPaddleVertices);
+			gl.drawArrays( gl.TRIANGLE_FAN, numVertices +5, 4);
 		}
 	
 		setTimeout(
