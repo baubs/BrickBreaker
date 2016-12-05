@@ -2,11 +2,11 @@
 
 var gl;
 var over = 0;
-var speed = 50;
+var speed = 10;
 var saves = 0;
 var label;
 
-var ballX = 0, ballY = 0, xVel = .005, yVel = -.005;
+var ballX = 0, ballY = 0, xVel = -.01, yVel = .01;
 var dispX, dispY, dispXLoc, dispYLoc;
 var padDir = 0;
 
@@ -18,11 +18,70 @@ var bufferId;
 
 var bricks = [];
 var numBricks = 50;
+var score = 0;
+//var brickTexture;
+//var brickImage;
 
+//function initTextures() {
+//  brickTexture = gl.createTexture();
+//  brickImage = new Image();
+//  brickImage.onload = function() { handleTextureLoaded(brickImage, brickTexture); }
+//  brickImage.src = "brick.jpg";
+//}
+
+//function handleTextureLoaded(image, texture) {
+//  gl.bindTexture(gl.TEXTURE_2D, texture);
+//  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+//  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+//  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+//  gl.generateMipmap(gl.TEXTURE_2D);
+//  gl.bindTexture(gl.TEXTURE_2D, null);
+//}
 
 window.onload = function init()
 {
+	var canvas = document.getElementById( "gl-canvas" );
+	label = document.getElementById("saves" );
 	
+	gl = WebGLUtils.setupWebGL( canvas );
+    if ( !gl ) { alert( "WebGL isn't available" ); }
+	
+	//Key listener for paddle control
+	window.addEventListener("keydown", keydownHandler, false);
+	function keydownHandler(e){
+		if(e.keyCode == 37){
+			if(padDir - .1 <= -.95){
+				padDir = -.95;
+			}
+			else{
+				padDir -= 0.1;
+			}
+		}
+		else if(e.keyCode == 39){
+			if(padDir + .1 >= .95){
+				padDir = .95;
+			}
+			else{
+				padDir += 0.1;
+			}
+		}
+	}
+	
+    //Texture
+    //var cubeVerticesTextureCoordBuffer = gl.createBuffer();
+    //gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
+  
+	//var textureCoordinates = [0.0,  0.0, 1.0,  0.0,	1.0,  1.0,	0.0,  1.0];
+	//gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
+	//var textureCoordAttribute = gl.getAttribLocation(program, "a_texCoord");
+	//gl.enableVertexAttribArray(textureCoordAttribute);
+	//gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+	
+	//gl.activeTexture(gl.TEXTURE0);
+	//gl.bindTexture(gl.TEXTURE_2D, brickTexture);
+	//gl.uniform1i(gl.getUniformLocation(program, "uSampler"), 0);
+	
+	//Generating Bricks
 	var c, r;
 	for(c = 0; c < numBricks/5; c ++){
 		for(r = 0; r < 5; r++){
@@ -31,18 +90,12 @@ window.onload = function init()
 			}
 			brick.x = brick.x + (.20)*c;
 			brick.y = brick.y + (-.1)*r;
-			brick.hits = 1;
+			brick.hits = 2;
 			bricks[c + (r*10)] = brick;
+			
 		}
 	}
-	
-    var canvas = document.getElementById( "gl-canvas" );
-	label = document.getElementById("saves" );
- 
-    gl = WebGLUtils.setupWebGL( canvas );
-    if ( !gl ) { alert( "WebGL isn't available" ); }
 
-    
 	//variables used to generate vertecies
     var i, x, y;
 	var rad = 0.03;
@@ -92,80 +145,65 @@ window.onload = function init()
 	dispXLoc = gl.getUniformLocation(program, "dispX");
 	dispYLoc = gl.getUniformLocation(program, "dispY");
 
-	//Ball Speed Up function
-	document.getElementById("up").onclick = function(){
-		if(xVel < 0){xVel-= .01;}
-		else if(xVel > 0){xVel += .01;}
-		if(yVel < 0){yVel -= .01;}
-		else if(yVel > 0){yVel += .01;}
-		console.log(xVel, ", ", yVel);
-	}
 	
-	//Ball Speed Down function
-	document.getElementById("down").onclick = function(){
-		if(xVel < 0){
-			if(xVel + .01 > -.005){
-				xVel = -.005;
-			}
-			else{
-				xVel+= .01;
-			}
-		}
-		else if(xVel > 0){
-			if(xVel - .01 < .005){
-				xVel = .005;
-			}
-			else{
-				xVel -= .01;
-			}
-		}
-		if(yVel < 0){
-			if(yVel + .01 > -.005){
-				yVel = -.005;
-			}
-			else{
-				yVel += .01;
-			}
-		}
-		else if(yVel > 0){
-			if(yVel - .01 < .005){
-				yVel = .005
-			}
-			else{
-				yVel -= .01;
-			}
-		}
-		console.log(xVel, ", ", yVel);
-	}
-	
-	document.getElementById("left").onclick = function(){
-		if(padDir - .1 <= -.95){
-			padDir = -.95;
-		}
-		else
-			padDir -= 0.1;
-	}
-	
-	document.getElementById("right").onclick = function(){
-		if(padDir + .1 >= .95){
-			padDir = .95;
-		}
-		else
-			padDir += 0.1;
-	}
 	
     render();
 };
 
 function colide(){
 	var i;
+	var radius = .03;
+	var len = .1;
+	var height = .05;
 	for(i = 0; i < numBricks; i++){
-		if( bricks[i].hits >=1 && ballY + yVel >= bricks[i].y - .075 && ballX > bricks[i].x - .075 && ballX < bricks[i].x + .075){
-			console.log("Ball(x,y): ("+ballX+","+ballY+")");
-			console.log("Brick(x,y): ("+bricks[i].x+","+bricks[i].y+")");
-			ballY = bricks[i].y - .075;
-			yVel = yVel*-1;
-			bricks[i].hits --;
+		//hit from below
+		if( bricks[i].hits >=1 && ballY + yVel >= bricks[i].y - .08 
+			&& ballX > bricks[i].x - .103 && ballX < bricks[i].x + .103
+			&& ballY < bricks[i].y - .08){
+				ballY = bricks[i].y - .08;
+				yVel = yVel*-1;
+				bricks[i].hits --;
+				score += 10;
+				label.innerHTML = "Score: " + score;
+		}
+		//hit from top
+		if( bricks[i].hits >=1 && ballY - radius > bricks[i].y + height
+			&& ballY - radius + yVel <= bricks[i].y + height 
+			&& ballX + radius + xVel >= bricks[i].x - len 
+			&& ballX - radius + xVel <= bricks[i].x + len){
+				//console.log("Top hit, Brick #" + i);
+				ballY = bricks[i].y + radius + height;
+				yVel = yVel*-1;
+				bricks[i].hits--;
+				score += 10;
+				label.innerHTML = "Score: " + score;
+		}
+	
+		//hit from right
+		if( bricks[i].hits >=1 
+			&& ballX - radius > bricks[i].x + len
+			&& ballX - radius + xVel <= bricks[i].x + len 
+			&& ballY + radius + yVel >= bricks[i].y - height 
+			&& ballY - radius + yVel <= bricks[i].y + height){
+				//console.log("Right side hit, Brick #" + i);
+				ballX = bricks[i].x + len + radius;
+				xVel = xVel*-1;
+				bricks[i].hits--;
+				score += 10;
+				label.innerHTML = "Score: " + score;
+		}
+		//hit from left
+		if( bricks[i].hits >=1 
+			&& ballX + radius < bricks[i].x - len
+			&& ballX + radius + xVel >= bricks[i].x - len 
+			&& ballY + radius + yVel >= bricks[i].y - height 
+			&& ballY - radius + yVel <= bricks[i].y + height){
+				//console.log("Left side hit, Brick #" + i);
+				ballX = bricks[i].x - len - radius;
+				xVel = xVel*-1;
+				bricks[i].hits--;
+				score += 10;
+				label.innerHTML = "Score: " + score;
 		}
 	}
 }
@@ -200,12 +238,20 @@ function render() {
 			ballY = .97;
 			yVel = yVel*(-1);
 		}
+		//Hitting Paddle
 		else if(ballY + yVel <= -.92){
-			if(ballX >= padDir -.125 && ballX <= padDir + .125){
+			if(ballX + xVel>= padDir -.125 && ballX <= padDir + .125){
 				ballY = -.92;
 				yVel = yVel*(-1);
 				saves += 1;
-				label.innerHTML = "Bounces: " + saves;
+				//Right Side of paddle
+				if(ballX + xVel< padDir - .1){xVel = -.025;}
+				else if(ballX + xVel< padDir - .05){xVel = -.015;}
+				else if(ballX + xVel< padDir ){xVel = -.01;}
+				else if(ballX + xVel> padDir + .1){xVel = .025;}
+				else if(ballX + xVel> padDir + .05){xVel = .015;}
+				else{xVel = .01};
+				console.log(xVel);
 			}
 			else{
 				ballY += yVel;
@@ -213,10 +259,7 @@ function render() {
 		}
 		else{
 			ballY += yVel;
-		}
-	
-	
-		
+		}		
 	
 		//Paddle
 		gl.uniform4fv( colorLoc, vec4(1.0, 0.4, 0.4, 1.0) );
@@ -230,10 +273,8 @@ function render() {
 		var i;
 		for(i = 0; i < numBricks; i ++){
 			if(bricks[i].hits >= 1){
-				//console.log(bricks[i].x - .1);
-				//gl.uniform4fv( colorLoc, vec4(Math.random(), Math.random(), Math.random(), 1.0) );
-				gl.uniform4fv( colorLoc, vec4(0.0, 0.0, 0.0, 1.0) );
-		
+				gl.uniform4fv( colorLoc, vec4(bricks[i].hits*.2, bricks[i].hits*.2, 0, 1.0) );
+				
 				gl.uniform1f(dispXLoc, bricks[i].x);
 				gl.uniform1f(dispYLoc, bricks[i].y);
 				gl.drawArrays( gl.TRIANGLE_FAN, numVertices +5, 4);
