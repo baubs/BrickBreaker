@@ -21,6 +21,7 @@ var numBricks = 50;
 var score = 0;
 //var brickTexture;
 //var brickImage;
+//hello there
 
 //function initTextures() {
 //  brickTexture = gl.createTexture();
