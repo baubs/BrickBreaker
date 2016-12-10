@@ -5,10 +5,15 @@ var over = 0;
 var speed = 10;
 var saves = 0;
 var label;
+var lifes_label;
+var reset = 0;
+var level = 0;
+var hit_bricks = 0;
 
 var ballX = 0, ballY = 0, xVel = -.01, yVel = .01;
 var dispX, dispY, dispXLoc, dispYLoc;
 var padDir = 0;
+var num_lifes = 3;
 
 var numVertices = 73;
 var numPaddleVertices= 4;
@@ -16,9 +21,11 @@ var colorLoc;
 
 var bufferId;
 
-var bricks = [];
+var bricks_levels = [];
 var numBricks = 50;
 var score = 0;
+var power_ups = ["life","explode"];
+
 //var brickTexture;
 //var brickImage;
 //hello there
@@ -43,6 +50,8 @@ window.onload = function init()
 {
 	var canvas = document.getElementById( "gl-canvas" );
 	label = document.getElementById("saves" );
+    lifes_label = document.getElementById("lifes");
+    
 	
 	gl = WebGLUtils.setupWebGL( canvas );
     if ( !gl ) { alert( "WebGL isn't available" ); }
@@ -66,6 +75,15 @@ window.onload = function init()
 				padDir += 0.1;
 			}
 		}
+        else if(e.keyCode == 32 && reset == 1){
+            xVel = 0;
+            yVel = .01;
+            reset = 0;
+        }
+        
+        if (reset == 1) {
+            ballX = padDir;
+        }
 	}
 	
     //Texture
@@ -83,20 +101,24 @@ window.onload = function init()
 	//gl.uniform1i(gl.getUniformLocation(program, "uSampler"), 0);
 	
 	//Generating Bricks
-	var c, r;
-	for(c = 0; c < numBricks/5; c ++){
-		for(r = 0; r < 5; r++){
-			var brick = {
-				'x': -.9, 'y':.95, 'hits': 1
-			}
-			brick.x = brick.x + (.20)*c;
-			brick.y = brick.y + (-.1)*r;
-			brick.hits = 2;
-			bricks[c + (r*10)] = brick;
+	var c, r, l;
+    for (l = 1; l < 10; l++) {
+        var bricks = [];
+        for(c = 0; c < numBricks/5; c ++){
+            for(r = 0; r < 5; r++){
+                var brick = {
+                    'x': -.9, 'y':.95, 'hits': 1
+                }
+                brick.x = brick.x + (.20)*c;
+                brick.y = brick.y + (-.1)*r;
+                brick.hits = l;
+                bricks[c + (r*10)] = brick;
 			
-		}
-	}
-
+            }
+        }
+        bricks_levels.push(bricks);
+    }
+        //console.log(bricks_levels[2])
 	//variables used to generate vertecies
     var i, x, y;
 	var rad = 0.03;
@@ -151,6 +173,19 @@ window.onload = function init()
     render();
 };
 
+function p_up() {
+    var x = Math.round(Math.random()*100);
+    console.log(x);
+    if ( x % 2 == 0) {
+        var y = Math.round(Math.random()*1);
+        console.log(y);
+        if ( y == 0) {
+            num_lifes = num_lifes + 1;
+            lifes_label.innerHTML = "Lives: " + num_lifes;
+        }
+    }
+};
+
 function colide(){
 	var i;
 	var radius = .03;
@@ -158,53 +193,79 @@ function colide(){
 	var height = .05;
 	for(i = 0; i < numBricks; i++){
 		//hit from below
-		if( bricks[i].hits >=1 && ballY + yVel >= bricks[i].y - .08 
-			&& ballX > bricks[i].x - .103 && ballX < bricks[i].x + .103
-			&& ballY < bricks[i].y - .08){
-				ballY = bricks[i].y - .08;
+        if( bricks_levels[level][i].hits >=1 && ballY + yVel >= bricks_levels[level][i].y - .08
+			&& ballX > bricks_levels[level][i].x - .103 && ballX < bricks_levels[level][i].x + .103
+			&& ballY < bricks_levels[level][i].y - .08){
+				ballY = bricks_levels[level][i].y - .08;
 				yVel = yVel*-1;
-				bricks[i].hits --;
+				bricks_levels[level][i].hits --;
 				score += 10;
 				label.innerHTML = "Score: " + score;
+                p_up();
+            
+                //counting the number of hit bricks
+                if(bricks_levels[level][i].hits == 0){
+                    hit_bricks = hit_bricks + 1;
+                }
+                    
 		}
 		//hit from top
-		if( bricks[i].hits >=1 && ballY - radius > bricks[i].y + height
-			&& ballY - radius + yVel <= bricks[i].y + height 
-			&& ballX + radius + xVel >= bricks[i].x - len 
-			&& ballX - radius + xVel <= bricks[i].x + len){
+		if( bricks_levels[level][i].hits >=1 && ballY - radius > bricks_levels[level][i].y + height
+			&& ballY - radius + yVel <= bricks_levels[level][i].y + height
+			&& ballX + radius + xVel >= bricks_levels[level][i].x - len
+			&& ballX - radius + xVel <= bricks_levels[level][i].x + len){
 				//console.log("Top hit, Brick #" + i);
-				ballY = bricks[i].y + radius + height;
+				ballY = bricks_levels[level][i].y + radius + height;
 				yVel = yVel*-1;
-				bricks[i].hits--;
+				bricks_levels[level][i].hits--;
 				score += 10;
 				label.innerHTML = "Score: " + score;
+                p_up();
+            
+                if(bricks_levels[level][i].hits == 0){
+                    hit_bricks = hit_bricks + 1;
+                }
+
+            
 		}
 	
 		//hit from right
-		if( bricks[i].hits >=1 
-			&& ballX - radius > bricks[i].x + len
-			&& ballX - radius + xVel <= bricks[i].x + len 
-			&& ballY + radius + yVel >= bricks[i].y - height 
-			&& ballY - radius + yVel <= bricks[i].y + height){
+		if( bricks_levels[level][i].hits >=1
+			&& ballX - radius > bricks_levels[level][i].x + len
+			&& ballX - radius + xVel <= bricks_levels[level][i].x + len
+			&& ballY + radius + yVel >= bricks_levels[level][i].y - height
+			&& ballY - radius + yVel <= bricks_levels[level][i].y + height){
 				//console.log("Right side hit, Brick #" + i);
-				ballX = bricks[i].x + len + radius;
+				ballX = bricks_levels[level][i].x + len + radius;
 				xVel = xVel*-1;
-				bricks[i].hits--;
+				bricks_levels[level][i].hits--;
 				score += 10;
 				label.innerHTML = "Score: " + score;
+                p_up();
+            
+                if(bricks_levels[level][i].hits == 0){
+                    hit_bricks = hit_bricks + 1;
+                }
+
 		}
 		//hit from left
-		if( bricks[i].hits >=1 
-			&& ballX + radius < bricks[i].x - len
-			&& ballX + radius + xVel >= bricks[i].x - len 
-			&& ballY + radius + yVel >= bricks[i].y - height 
-			&& ballY - radius + yVel <= bricks[i].y + height){
+		if( bricks_levels[level][i].hits >=1
+			&& ballX + radius < bricks_levels[level][i].x - len
+			&& ballX + radius + xVel >= bricks_levels[level][i].x - len
+			&& ballY + radius + yVel >= bricks_levels[level][i].y - height
+			&& ballY - radius + yVel <= bricks_levels[level][i].y + height){
 				//console.log("Left side hit, Brick #" + i);
-				ballX = bricks[i].x - len - radius;
+				ballX = bricks_levels[level][i].x - len - radius;
 				xVel = xVel*-1;
-				bricks[i].hits--;
+				bricks_levels[level][i].hits--;
 				score += 10;
 				label.innerHTML = "Score: " + score;
+                p_up();
+            
+                if(bricks_levels[level][i].hits == 0){
+                    hit_bricks = hit_bricks + 1;
+                }
+
 		}
 	}
 }
@@ -219,9 +280,26 @@ function render() {
 		if(ballY <= -.98){
 			xVel = 0;
 			yVel = 0;
-			over = 1;
-			alert("Game Over!");
+            num_lifes = num_lifes - 1
+            lifes_label.innerHTML = "Lives: " + num_lifes;
+            if (num_lifes == 0) {
+                over = 1;
+                alert("Game Over!");
+            }
+            else {
+                ballY = -.9;
+                ballX = padDir;
+                xVel = 0;
+                yVel = 0;
+                reset = 1;
+            }
 		}
+        
+        //new level
+        if (hit_bricks == numBricks) {
+            level = level + 1;
+            hit_bricks = 0;
+        }
 	
 		//Figure out ball displacement
 		if(ballX + xVel >= .97){
@@ -252,7 +330,7 @@ function render() {
 				else if(ballX + xVel> padDir + .1){xVel = .025;}
 				else if(ballX + xVel> padDir + .05){xVel = .015;}
 				else{xVel = .01};
-				console.log(xVel);
+    
 			}
 			else{
 				ballY += yVel;
@@ -273,12 +351,14 @@ function render() {
 		//Brick
 		var i;
 		for(i = 0; i < numBricks; i ++){
-			if(bricks[i].hits >= 1){
-				gl.uniform4fv( colorLoc, vec4(bricks[i].hits*.2, bricks[i].hits*.2, 0, 1.0) );
+            if(bricks_levels[level][i].hits >= 1){
+				gl.uniform4fv( colorLoc, vec4(bricks_levels[level][i].hits*.2, bricks_levels[level][i].hits*.2, 0, 1.0) );
 				
-				gl.uniform1f(dispXLoc, bricks[i].x);
-				gl.uniform1f(dispYLoc, bricks[i].y);
+				gl.uniform1f(dispXLoc, bricks_levels[level][i].x);
+				gl.uniform1f(dispYLoc, bricks_levels[level][i].y);
 				gl.drawArrays( gl.TRIANGLE_FAN, numVertices +5, 4);
+                gl.uniform4fv(colorLoc, vec4(0,0,0,1));
+                gl.drawArrays(gl.LINE_LOOP,numVertices+5,4);
 			}
 		}
 		
@@ -290,6 +370,7 @@ function render() {
 		gl.uniform1f(dispYLoc, dispY);
 		gl.drawArrays( gl.TRIANGLE_FAN, 0, numVertices + 1);
 	
+        
 		setTimeout(
 			function () {requestAnimFrame( render );},
 			speed
