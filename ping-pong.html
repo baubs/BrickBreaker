@@ -6,10 +6,9 @@
 attribute vec4 vPosition;
 uniform float dispX, dispY;
 
-//attribute vec2 a_texCoord;
-//varying vec2 v_texCoord;
+attribute vec2 aTextureCoord;
+varying vec2 vTextCoord;
 
-uniform vec3 theta;
 void
 main()
 {
@@ -18,7 +17,7 @@ main()
 	gl_Position.z = 0.0;
 	gl_Position.w = 1.0;
 	
-//	v_texCoord = a_texCoord;
+	vTextCoord = aTextureCoord;
 }
 </script>
 
@@ -26,12 +25,13 @@ main()
 precision mediump float;
 uniform vec4 color;
 
-//uniform sampler2D u_image;
-//varying vec2 v_texCoord;
+uniform sampler2D u_image;
+varying vec2 vTextCoord;
 void
 main()
 {
     gl_FragColor = color;
+	gl_FragColor = vec4(texture2D(u_image, vTextCoord).rgb, 1.0)*color;
 }
 </script>
 
@@ -45,9 +45,9 @@ main()
 <canvas id="gl-canvas" width="512" height="512">
 Oops ... your browser doesn't support the HTML5 canvas element
 </canvas>
-<<br><br>
+<br><br>
 <label id ="saves">Score: 0</label>
-<<br><br>
+<br><br>
 <label id ="lifes">Lifes: 3</label>
 </body>
 </html>

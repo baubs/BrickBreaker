@@ -6,55 +6,73 @@ var speed = 10;
 var saves = 0;
 var label;
 var lifes_label;
-var reset = 0;
+var reset = 1;
 var level = 0;
 var hit_bricks = 0;
 
-var ballX = 0, ballY = 0, xVel = -.01, yVel = .01;
+var ballX = 0, ballY = 0, xVel = -.01, yVel = .013;
 var dispX, dispY, dispXLoc, dispYLoc;
 var padDir = 0;
 var num_lifes = 3;
 
-var numVertices = 73;
-var numPaddleVertices= 4;
+var ballVertices = [];
+var brickVertices = [];
+var paddleVertices = [];
 var colorLoc;
+var vPositionLoc;
 
-var bufferId;
+var ballBuffer;
+var brickBuffer;
+var paddleBuffer;
+var tBuffer;
 
 var bricks_levels = [];
 var numBricks = 50;
 var score = 0;
 var power_ups = ["life","explode"];
 
-//var brickTexture;
-//var brickImage;
-//hello there
+var texCoord = [];
+var textureCoordLoc;
+var texture;
+//var textureCoordAttribute;
+//var textureCoordData = [];
+var program;
 
-//function initTextures() {
-//  brickTexture = gl.createTexture();
-//  brickImage = new Image();
-//  brickImage.onload = function() { handleTextureLoaded(brickImage, brickTexture); }
-//  brickImage.src = "brick.jpg";
-//}
 
-//function handleTextureLoaded(image, texture) {
-//  gl.bindTexture(gl.TEXTURE_2D, texture);
-//  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-//  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-//  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-//  gl.generateMipmap(gl.TEXTURE_2D);
-//  gl.bindTexture(gl.TEXTURE_2D, null);
-//}
+function initTexture() {
+    texture = gl.createTexture();
+    texture.image = new Image();
+    texture.image.src = "brick.jpg";
+    texture.image.onload = function() {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, texture.image);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR );
+        gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+}
 
 window.onload = function init()
 {
 	var canvas = document.getElementById( "gl-canvas" );
-	label = document.getElementById("saves" );
-    lifes_label = document.getElementById("lifes");
-    
 	
 	gl = WebGLUtils.setupWebGL( canvas );
-    if ( !gl ) { alert( "WebGL isn't available" ); }
+	if ( !gl ) { alert( "WebGL isn't available" ); }
+	
+	//  Configure WebGL
+    gl.viewport( 0, 0, canvas.width, canvas.height );
+    gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
+	
+	label = document.getElementById("saves" );
+    lifes_label = document.getElementById("lifes");
+
+	
+	//  Load shaders and initialize attribute buffers
+    program = initShaders( gl, "vertex-shader", "fragment-shader" );
+    gl.useProgram( program );
 	
 	//Key listener for paddle control
 	window.addEventListener("keydown", keydownHandler, false);
@@ -77,29 +95,12 @@ window.onload = function init()
 		}
         else if(e.keyCode == 32 && reset == 1){
             xVel = 0;
-            yVel = .01;
+            yVel = .013;
             reset = 0;
-        }
-        
-        if (reset == 1) {
-            ballX = padDir;
         }
 	}
 	
-    //Texture
-    //var cubeVerticesTextureCoordBuffer = gl.createBuffer();
-    //gl.bindBuffer(gl.ARRAY_BUFFER, cubeVerticesTextureCoordBuffer);
-  
-	//var textureCoordinates = [0.0,  0.0, 1.0,  0.0,	1.0,  1.0,	0.0,  1.0];
-	//gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates), gl.STATIC_DRAW);
-	//var textureCoordAttribute = gl.getAttribLocation(program, "a_texCoord");
-	//gl.enableVertexAttribArray(textureCoordAttribute);
-	//gl.vertexAttribPointer(textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
-	
-	//gl.activeTexture(gl.TEXTURE0);
-	//gl.bindTexture(gl.TEXTURE_2D, brickTexture);
-	//gl.uniform1i(gl.getUniformLocation(program, "uSampler"), 0);
-	
+   
 	//Generating Bricks
 	var c, r, l;
     for (l = 1; l < 10; l++) {
@@ -107,8 +108,13 @@ window.onload = function init()
         for(c = 0; c < numBricks/5; c ++){
             for(r = 0; r < 5; r++){
                 var brick = {
-                    'x': -.9, 'y':.95, 'hits': 1
+                    'x': -.9, 'y':.95, 'hits': 1, 'powerup': 0.0
                 }
+				var pow = Math.random()*100;
+				if(pow > 97 ){
+					brick.powerup = 1.0;
+					brick.hits = 1;
+					}
                 brick.x = brick.x + (.20)*c;
                 brick.y = brick.y + (-.1)*r;
                 brick.hits = l;
@@ -118,72 +124,76 @@ window.onload = function init()
         }
         bricks_levels.push(bricks);
     }
-        //console.log(bricks_levels[2])
+     
 	//variables used to generate vertecies
     var i, x, y;
 	var rad = 0.03;
-	var vertices = [];
-	vertices.push(vec2(0,0));
+	//var vertices = [];
+	ballVertices.push(vec2(0,0));
 	
 	//Generate vertices for ball
 	for(i=0;i<=360;i+=5){
 		x = Math.cos(i*Math.PI/180)*rad;
 		y = Math.sin(i*Math.PI/180)*rad;
-		vertices.push(vec2(x,y));
+		ballVertices.push(vec2(x,y));
 	}
-	
+    
 	//vertices for paddle
-	vertices.push(vec2(.125, -1));
-	vertices.push(vec2(-.125, -1));
-	vertices.push(vec2(-.125, -.95));
-	vertices.push(vec2(.125, -.95));
+	paddleVertices.push(vec2(.125, -1));
+	paddleVertices.push(vec2(-.125, -1));
+	paddleVertices.push(vec2(-.125, -.95));
+	paddleVertices.push(vec2(.125, -.95));
     
 	//vertecies for brick
-	vertices.push(vec2(.1, .05));
-	vertices.push(vec2(-.1, .05));
-	vertices.push(vec2(-.1, -.05));
-	vertices.push(vec2(.1, -.05));
+	brickVertices.push(vec2(-.1, -.05));
+	brickVertices.push(vec2(-.1, .05));
+	brickVertices.push(vec2(.1, .05));
+	brickVertices.push(vec2(.1, -.05));
 	
-    //  Configure WebGL
-    gl.viewport( 0, 0, canvas.width, canvas.height );
-    gl.clearColor( 0.8, 0.8, 0.8, 1.0 );
-    
-    //  Load shaders and initialize attribute buffers
-    var program = initShaders( gl, "vertex-shader", "fragment-shader" );
-    gl.useProgram( program );
+	
+    // texture 
+    texCoord = [
+	vec2(0.0, 0.0),
+	vec2(0.0, 1.0),
+    vec2(1.0, 1.0),
+	vec2(1.0, 0.0) ];
+	
     
     // Load the data into the GPU 
-    bufferId = gl.createBuffer();
-	gl.bindBuffer( gl.ARRAY_BUFFER, bufferId );
-    gl.bufferData( gl.ARRAY_BUFFER, flatten(vertices), gl.STATIC_DRAW );
+    ballBuffer = gl.createBuffer();
+	gl.bindBuffer( gl.ARRAY_BUFFER, ballBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(ballVertices), gl.STATIC_DRAW );
 
-
+    brickBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, brickBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(brickVertices), gl.STATIC_DRAW );
+    
+    paddleBuffer = gl.createBuffer();
+    gl.bindBuffer( gl.ARRAY_BUFFER, paddleBuffer );
+    gl.bufferData( gl.ARRAY_BUFFER, flatten(paddleVertices), gl.STATIC_DRAW );
+    
     // Associate out shader variables with our data buffer
-    var vPosition = gl.getAttribLocation( program, "vPosition" );
-    gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vPosition );
+    vPositionLoc = gl.getAttribLocation( program, "vPosition" );
+    //gl.vertexAttribPointer( vPositionLoc, 2, gl.FLOAT, false, 0, 0 );
+    //gl.enableVertexAttribArray( vPositionLoc );
 	
-
 	colorLoc = gl.getUniformLocation( program, "color" );
 	dispXLoc = gl.getUniformLocation(program, "dispX");
 	dispYLoc = gl.getUniformLocation(program, "dispY");
-
 	
+	tBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, tBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, flatten(texCoord), gl.STATIC_DRAW);
+
+    textureCoordLoc = gl.getAttribLocation(program, "aTextureCoord");
+    //gl.vertexAttribPointer(textureCoordLoc, 2, gl.FLOAT, false, 0, 0);
+    //gl.enableVertexAttribArray(textureCoordLoc);
+
+	initTexture();
+	gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(gl.getUniformLocation(program, "u_image"), 0);
 	
     render();
-};
-
-function p_up() {
-    var x = Math.round(Math.random()*100);
-    console.log(x);
-    if ( x % 2 == 0) {
-        var y = Math.round(Math.random()*1);
-        console.log(y);
-        if ( y == 0) {
-            num_lifes = num_lifes + 1;
-            lifes_label.innerHTML = "Lives: " + num_lifes;
-        }
-    }
 };
 
 function colide(){
@@ -201,10 +211,13 @@ function colide(){
 				bricks_levels[level][i].hits --;
 				score += 10;
 				label.innerHTML = "Score: " + score;
-                p_up();
-            
-                //counting the number of hit bricks
+ 
                 if(bricks_levels[level][i].hits == 0){
+					if ( bricks_levels[level][i].powerup == 1) {
+						console.log("HERE");
+						num_lifes = num_lifes + 1;
+						lifes_label.innerHTML = "Lives: " + num_lifes;
+					}
                     hit_bricks = hit_bricks + 1;
                 }
                     
@@ -213,16 +226,18 @@ function colide(){
 		if( bricks_levels[level][i].hits >=1 && ballY - radius > bricks_levels[level][i].y + height
 			&& ballY - radius + yVel <= bricks_levels[level][i].y + height
 			&& ballX + radius + xVel >= bricks_levels[level][i].x - len
-			&& ballX - radius + xVel <= bricks_levels[level][i].x + len){
-				//console.log("Top hit, Brick #" + i);
-				ballY = bricks_levels[level][i].y + radius + height;
+			&& ballX - radius + xVel <= bricks_levels[level][i].x + len){height;
 				yVel = yVel*-1;
 				bricks_levels[level][i].hits--;
 				score += 10;
 				label.innerHTML = "Score: " + score;
-                p_up();
-            
+             
                 if(bricks_levels[level][i].hits == 0){
+					if ( bricks_levels[level][i].powerup == 1) {
+						console.log("HERE");
+						num_lifes = num_lifes + 1;
+						lifes_label.innerHTML = "Lives: " + num_lifes;
+					}
                     hit_bricks = hit_bricks + 1;
                 }
 
@@ -235,15 +250,18 @@ function colide(){
 			&& ballX - radius + xVel <= bricks_levels[level][i].x + len
 			&& ballY + radius + yVel >= bricks_levels[level][i].y - height
 			&& ballY - radius + yVel <= bricks_levels[level][i].y + height){
-				//console.log("Right side hit, Brick #" + i);
 				ballX = bricks_levels[level][i].x + len + radius;
 				xVel = xVel*-1;
 				bricks_levels[level][i].hits--;
 				score += 10;
 				label.innerHTML = "Score: " + score;
-                p_up();
-            
+                       
                 if(bricks_levels[level][i].hits == 0){
+					if ( bricks_levels[level][i].powerup == 1) {
+						console.log("HERE");
+						num_lifes = num_lifes + 1;
+						lifes_label.innerHTML = "Lives: " + num_lifes;
+					}
                     hit_bricks = hit_bricks + 1;
                 }
 
@@ -254,15 +272,18 @@ function colide(){
 			&& ballX + radius + xVel >= bricks_levels[level][i].x - len
 			&& ballY + radius + yVel >= bricks_levels[level][i].y - height
 			&& ballY - radius + yVel <= bricks_levels[level][i].y + height){
-				//console.log("Left side hit, Brick #" + i);
 				ballX = bricks_levels[level][i].x - len - radius;
 				xVel = xVel*-1;
 				bricks_levels[level][i].hits--;
 				score += 10;
 				label.innerHTML = "Score: " + score;
-                p_up();
-            
+                          
                 if(bricks_levels[level][i].hits == 0){
+					if ( bricks_levels[level][i].powerup == 1) {
+						console.log("HERE");
+						num_lifes = num_lifes + 1;
+						lifes_label.innerHTML = "Lives: " + num_lifes;
+					}
                     hit_bricks = hit_bricks + 1;
                 }
 
@@ -272,11 +293,19 @@ function colide(){
 
 function render() {
 	if(over == 0){
-		
 		gl.clear( gl.COLOR_BUFFER_BIT );
 		
+		//Handle reset
+		if (reset == 1) {
+            ballX = padDir;
+			xVel = 0;
+			yVel = 0;
+			ballY = -.92;
+        }
+		
 		colide();
-		//Game over
+		
+		//Losing a life
 		if(ballY <= -.98){
 			xVel = 0;
 			yVel = 0;
@@ -284,13 +313,9 @@ function render() {
             lifes_label.innerHTML = "Lives: " + num_lifes;
             if (num_lifes == 0) {
                 over = 1;
-                alert("Game Over!");
+                alert("Game Over! Your Score: " + score);
             }
             else {
-                ballY = -.9;
-                ballX = padDir;
-                xVel = 0;
-                yVel = 0;
                 reset = 1;
             }
 		}
@@ -299,6 +324,8 @@ function render() {
         if (hit_bricks == numBricks) {
             level = level + 1;
             hit_bricks = 0;
+			reset = 1;
+			 alert("Level " + level + " complete!");
         }
 	
 		//Figure out ball displacement
@@ -338,37 +365,63 @@ function render() {
 		}
 		else{
 			ballY += yVel;
-		}		
-	
+		}
+        
+        // added by Chaoli
+        gl.enableVertexAttribArray( vPositionLoc );
+        gl.bindBuffer( gl.ARRAY_BUFFER, paddleBuffer );
+        gl.vertexAttribPointer( vPositionLoc, 2, gl.FLOAT, false, 0, 0 );
+        
 		//Paddle
 		gl.uniform4fv( colorLoc, vec4(1.0, 0.4, 0.4, 1.0) );
 		dispX = padDir;
 		dispY = 0;	
 		gl.uniform1f(dispXLoc, dispX);
 		gl.uniform1f(dispYLoc, dispY);
-		gl.drawArrays( gl.TRIANGLE_FAN, numVertices + 1, numPaddleVertices);
+		gl.drawArrays( gl.TRIANGLE_FAN, 0, paddleVertices.length);
 	
+        // added by Chaoli
+        gl.enableVertexAttribArray( vPositionLoc );
+        gl.bindBuffer( gl.ARRAY_BUFFER, brickBuffer );
+        gl.vertexAttribPointer( vPositionLoc, 2, gl.FLOAT, false, 0, 0 );
+        gl.enableVertexAttribArray(textureCoordLoc);
+        gl.bindBuffer( gl.ARRAY_BUFFER, tBuffer );
+        gl.vertexAttribPointer(textureCoordLoc, 2, gl.FLOAT, false, 0, 0);
+        
 		//Brick
 		var i;
 		for(i = 0; i < numBricks; i ++){
             if(bricks_levels[level][i].hits >= 1){
-				gl.uniform4fv( colorLoc, vec4(bricks_levels[level][i].hits*.2, bricks_levels[level][i].hits*.2, 0, 1.0) );
+				if(bricks_levels[level][i].powerup == 1.0){
+					gl.uniform4fv( colorLoc, vec4(1.0, 0.0, 0.0, 1.0) );
+				}
+				else{
+					gl.uniform4fv( colorLoc, vec4(bricks_levels[level][i].hits*.4, bricks_levels[level][i].hits*.4, bricks_levels[level][i].hits*.4, 1.0) );
+				}
 				
 				gl.uniform1f(dispXLoc, bricks_levels[level][i].x);
 				gl.uniform1f(dispYLoc, bricks_levels[level][i].y);
-				gl.drawArrays( gl.TRIANGLE_FAN, numVertices +5, 4);
+				gl.drawArrays( gl.TRIANGLE_FAN, 0, brickVertices.length);
                 gl.uniform4fv(colorLoc, vec4(0,0,0,1));
-                gl.drawArrays(gl.LINE_LOOP,numVertices+5,4);
+                gl.drawArrays(gl.LINE_LOOP,0, brickVertices.length);
 			}
 		}
 		
+        // added by Chaoli
+        gl.disableVertexAttribArray(textureCoordLoc);
+        
+        // added by Chaoli
+        gl.enableVertexAttribArray( vPositionLoc );
+        gl.bindBuffer( gl.ARRAY_BUFFER, ballBuffer );
+        gl.vertexAttribPointer( vPositionLoc, 2, gl.FLOAT, false, 0, 0 );
+        
 		//Ball
 		gl.uniform4fv( colorLoc, vec4(0.4, 0.4, 1.0, 1.0) );
 		dispX = ballX;
 		dispY = ballY;
 		gl.uniform1f(dispXLoc, dispX);
 		gl.uniform1f(dispYLoc, dispY);
-		gl.drawArrays( gl.TRIANGLE_FAN, 0, numVertices + 1);
+		gl.drawArrays( gl.TRIANGLE_FAN, 0, ballVertices.length);
 	
         
 		setTimeout(
