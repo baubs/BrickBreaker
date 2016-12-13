@@ -6,6 +6,7 @@ var speed = 10;
 var saves = 0;
 var label;
 var lifes_label;
+var level_label;
 var reset = 1;
 var level = 0;
 var hit_bricks = 0;
@@ -68,6 +69,7 @@ window.onload = function init()
 	
 	label = document.getElementById("saves" );
     lifes_label = document.getElementById("lifes");
+	level_label = document.getElementById("level");
 
 	
 	//  Load shaders and initialize attribute buffers
@@ -394,7 +396,8 @@ function render() {
             level = level + 1;
             hit_bricks = 0;
 			reset = 1;
-			 alert("Level " + level + " complete!");
+			alert("Level " + level + " complete!");
+			level_label.innerHTML = "Level: " + (level + 1);
         }
 	
 		//Figure out ball displacement
