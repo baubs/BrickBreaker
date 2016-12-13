@@ -27,7 +27,7 @@ var paddleBuffer;
 var tBuffer;
 
 var bricks_levels = [];
-var numBricks = 50;
+var numBricks = [];
 var score = 0;
 var power_ups = ["life","explode"];
 
@@ -95,35 +95,104 @@ window.onload = function init()
 		}
         else if(e.keyCode == 32 && reset == 1){
             xVel = 0;
-            yVel = .013;
+            yVel = .015;
             reset = 0;
         }
 	}
 	
+	
+	//Level 1
+	var levels = [];
+	var level_1 = [];
+	level_1.push([0,0,1,0]);
+	level_1.push([1,0,1,0]);
+	level_1.push([2,0,1,0]);
+	level_1.push([3,0,1,0]);
+	level_1.push([4,0,1,0]);
+	level_1.push([5,0,1,0]);
+	level_1.push([6,0,1,0]);
+	level_1.push([7,0,1,0]);
+	level_1.push([8,0,1,0]);
+	level_1.push([9,0,1,0]);
+	
+	numBricks.push(level_1.length);
+	levels.push(level_1);
+	
+	
+	//level 2
+	var level_2 = [];
+	level_2.push([0,0,1,0]);
+	level_2.push([1,1,1,0]);
+	level_2.push([2,2,2,0]);
+	level_2.push([3,3,2,0]);
+	level_2.push([4,4,1,1]);
+	level_2.push([5,3,2,0]);
+	level_2.push([6,2,2,0]);
+	level_2.push([7,1,1,0]);
+	level_2.push([8,0,1,0]);
+	level_2.push([9,1,1,0]);
+	
+	numBricks.push(level_2.length);
+	levels.push(level_2);
+	
+	//level 3
+	var level_3 = [];
+	level_3.push([5,0,1,0]);
+	level_3.push([4,1,1,0]);level_3.push([5,1,1,0]);level_3.push([6,1,1,0]);
+	level_3.push([3,2,1,0]);level_3.push([4,2,1,0]);level_3.push([5,2,2,0]);
+		level_3.push([6,2,1,0]);level_3.push([7,2,1,0]);
+	level_3.push([2,3,1,0]);level_3.push([3,3,1,0]);level_3.push([4,3,2,0]);
+		level_3.push([5,3,1,1]);level_3.push([6,3,2,0]);level_3.push([7,3,1,0]);
+		level_3.push([8,3,1,0]);
+	level_3.push([1,4,1,0]);level_3.push([2,4,1,0]);level_3.push([3,4,2,0]);
+		level_3.push([4,4,2,0]);level_3.push([5,4,2,0]);level_3.push([6,4,2,0]);
+		level_3.push([7,4,2,0]);level_3.push([8,4,1,0]);level_3.push([9,4,1,0]);
+	level_3.push([1,5,1,0]);level_3.push([2,5,2,0]);level_3.push([3,5,3,0]);
+		level_3.push([4,5,3,0]);level_3.push([5,5,3,0]);level_3.push([6,5,3,0]);
+		level_3.push([7,5,3,0]);level_3.push([8,5,2,0]);level_3.push([9,5,1,0]);level_3.push([0,5,1,0]);
+	
+	numBricks.push(level_3.length);
+	levels.push(level_3);
+	
+	var l, b;
+	for(l = 0; l < levels.length; l++){
+		var bricks= [];
+		for(b = 0; b < levels[l].length; b ++){
+			var brick = {'x': -.9, 'y':.95, 'hits': 1, 'powerup': 0.0}
+			brick.x = brick.x + (.2)*levels[l][b][0];
+			brick.y = brick.y + (-.1)*levels[l][b][1];
+			brick.hits = levels[l][b][2];
+			brick.powerup = levels[l][b][3]
+			bricks.push(brick);
+		}
+		bricks_levels.push(bricks);
+	}
+	
+	
    
 	//Generating Bricks
-	var c, r, l;
-    for (l = 1; l < 10; l++) {
-        var bricks = [];
-        for(c = 0; c < numBricks/5; c ++){
-            for(r = 0; r < 5; r++){
-                var brick = {
-                    'x': -.9, 'y':.95, 'hits': 1, 'powerup': 0.0
-                }
-				var pow = Math.random()*100;
-				if(pow > 97 ){
-					brick.powerup = 1.0;
-					brick.hits = 1;
-					}
-                brick.x = brick.x + (.20)*c;
-                brick.y = brick.y + (-.1)*r;
-                brick.hits = l;
-                bricks[c + (r*10)] = brick;
+//	var c, r, l;	
+//    for (l = 1; l < 10; l++) {
+//        var bricks = [];
+//        for(c = 0; c < numBricks/5; c ++){
+//            for(r = 0; r < 5; r++){
+//                var brick = {
+//                    'x': -.9, 'y':.95, 'hits': 1, 'powerup': 0.0
+//                }
+//				var pow = Math.random()*100;
+//				if(pow > 97 ){
+//					brick.powerup = 1.0;
+//					brick.hits = 1;
+//					}
+//                brick.x = brick.x + (.20)*c;
+//                brick.y = brick.y + (-.1)*r;
+//                brick.hits = l;
+//                bricks[c + (r*10)] = brick;
 			
-            }
-        }
-        bricks_levels.push(bricks);
-    }
+//            }
+//        }
+//        bricks_levels.push(bricks);
+//    }
      
 	//variables used to generate vertecies
     var i, x, y;
@@ -201,7 +270,7 @@ function colide(){
 	var radius = .03;
 	var len = .1;
 	var height = .05;
-	for(i = 0; i < numBricks; i++){
+	for(i = 0; i < numBricks[level]; i++){
 		//hit from below
         if( bricks_levels[level][i].hits >=1 && ballY + yVel >= bricks_levels[level][i].y - .08
 			&& ballX > bricks_levels[level][i].x - .103 && ballX < bricks_levels[level][i].x + .103
@@ -321,7 +390,7 @@ function render() {
 		}
         
         //new level
-        if (hit_bricks == numBricks) {
+        if (hit_bricks == numBricks[level]) {
             level = level + 1;
             hit_bricks = 0;
 			reset = 1;
@@ -390,9 +459,9 @@ function render() {
         
 		//Brick
 		var i;
-		for(i = 0; i < numBricks; i ++){
+		for(i = 0; i < numBricks[level]; i ++){
             if(bricks_levels[level][i].hits >= 1){
-				if(bricks_levels[level][i].powerup == 1.0){
+				if(bricks_levels[level][i].powerup == 1){
 					gl.uniform4fv( colorLoc, vec4(1.0, 0.0, 0.0, 1.0) );
 				}
 				else{
